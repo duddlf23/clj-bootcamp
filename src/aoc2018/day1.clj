@@ -6,16 +6,19 @@
 
 ; Part 1
 
-(->> input
-     (reduce +))
-
+(comment
+  (->> input
+       (reduce +))
+  )
 ; Part 2
 
-(->> input
-     cycle
-     (reductions +)
-     (reduce (fn [sums-history current-sum]
-               (if (contains? sums-history current-sum)
-                 (reduced current-sum)
-                 (conj sums-history current-sum)))
-             #{}))
+(comment
+  (->> input
+       cycle
+       (reductions +)
+       (reduce (fn [sums-history current-sum]
+                 (if (sums-history current-sum)
+                   (reduced current-sum)
+                   (conj sums-history current-sum)))
+               #{}))
+  )

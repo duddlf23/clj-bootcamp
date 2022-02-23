@@ -6,21 +6,35 @@
 (def input (file/read-edn "aoc2018/day2_in.edn"))
 
 ; Part 1
-
-(def checksum-freq-conditions [#(contains? % 2) #(contains? % 3)])
-
 (defn get-freq-nums-set [id]
-  (-> id
-      frequencies
-      vals
-      set))
+  (->> id
+       frequencies
+       vals
+       set))
 
-(-> (map get-freq-nums-set input)
-    (as-> freq-info
-          (map #(-> %
-                  (filter freq-info)
-                  count) checksum-freq-conditions))
-    (->> (reduce *)))
+(defn get-checksum [ids]
+  (let [contains-n-filter (fn [n]
+                            (partial filter #(contains? % n)))
+        checksum-freq-filters (juxt
+                                (contains-n-filter 2)
+                                (contains-n-filter 3))]
+    (->> ids
+         (map get-freq-nums-set)
+         checksum-freq-filters
+         (map count)
+         (reduce *))
+    )
+  )
+
+(comment
+  (get-checksum input)
+  )
+
+
+
+
+
+
 
 ; Part 2
 (defn count-diff [xs ys]
