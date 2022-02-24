@@ -43,7 +43,7 @@
   "두 스트링의 각 문자를 순서대로 비교해 서로 같은 모든 문자들의 부분 스트링"
   [xs ys]
   (->> (map vector xs ys)
-       (keep (fn피듭[[x y]]
+       (keep (fn[[x y]]
                (when (= x y) x)))
        string/join))
 
