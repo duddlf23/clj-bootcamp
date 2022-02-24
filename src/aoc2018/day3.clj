@@ -8,15 +8,16 @@
 ; part 1
 (defn parse-one-line-to-seq [line]
   (->> line
-       (re-find #"@ (\d+),(\d+): (\d+)x(\d+)")
+       (re-find #"#(\d+) @ (\d+),(\d+): (\d+)x(\d+)")
        (drop 1)
        (map edn/read-string)))
 
 (defn parse-one-line-to-hash-map [line]
   (->> line
        parse-one-line-to-seq
-       ((fn [[start-x start-y length-x length-y]]
-          {:start-x start-x
+       ((fn [[id start-x start-y length-x length-y]]
+          {:id id
+           :start-x start-x
            :start-y start-y
            :length-x length-x
            :length-y length-y}))))
