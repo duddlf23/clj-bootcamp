@@ -1,7 +1,8 @@
 (ns aoc2018.day2
   "https://adventofcode.com/2018/day/2"
   (:require [util.file :as file]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [clojure.math.combinatorics :as combo]))
 
 (def input (file/read-edn "aoc2018/day2_in.edn"))
 
@@ -62,8 +63,16 @@
           []
           box-ids))
 
+(defn find-common-letters-with-combi [box-ids]
+  (let [allowed-diff-condition #(= 1 (count-diff %1 %2))]
+    (->> (combo/combinations box-ids 2)
+         (some (fn [[x y]]
+                 (when (allowed-diff-condition x y)
+                   (get-longest-matched-str x y)))))))
+
 (comment
   (count-diff "abb" "aaa")
   (get-longest-matched-str "aaa" "aba")
-  (find-common-letters input))
+  (find-common-letters input)
+  (find-common-letters-with-combi input))
 
