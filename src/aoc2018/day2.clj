@@ -31,11 +31,6 @@
   (get-checksum input))
 
 
-((partial filter odd?) [1 3])
-
-
-((filter odd?) [1 3])
-
 ; Part 2
 (defn count-diff
   "두 스트링의 각 문자를 순서대로 비교해 서로 다른 문자의 개수"
@@ -48,7 +43,7 @@
   "두 스트링의 각 문자를 순서대로 비교해 서로 같은 모든 문자들의 부분 스트링"
   [xs ys]
   (->> (map vector xs ys)
-       (keep (fn [[x y]]
+       (keep (fn피듭[[x y]]
                (when (= x y) x)))
        string/join))
 
@@ -70,9 +65,31 @@
                  (when (allowed-diff-condition x y)
                    (get-longest-matched-str x y)))))))
 
+; 리뷰 반영
+
+(defn find-common-letters-using-for [box-ids]
+  (let [allowed-diff-condition #(= 1 (count-diff %1 %2))]
+    (->> (for [id1 box-ids
+               id2 box-ids
+               :when (allowed-diff-condition id1 id2)]
+           (get-longest-matched-str id1 id2))
+         first)))
+
+(defn find-common-letters-using-for-and-index [box-ids]
+  (let [box-ids-with-index (map vector box-ids (range))
+        allowed-diff-condition #(= 1 (count-diff %1 %2))]
+    (->> (for [[id1 id1-idx] box-ids-with-index
+               [id2 id2-idx] box-ids-with-index
+               :while (> id1-idx id2-idx)
+               :when (allowed-diff-condition id1 id2)]
+           (get-longest-matched-str id1 id2))
+         first)))
+
 (comment
   (count-diff "abb" "aaa")
   (get-longest-matched-str "aaa" "aba")
   (find-common-letters input)
-  (find-common-letters-with-combi input))
+  (find-common-letters-with-combi input)
+  (find-common-letters-using-for input)
+  (find-common-letters-using-for-and-index input))
 
