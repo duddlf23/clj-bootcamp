@@ -1,6 +1,6 @@
 (ns aoc2018.day3
   "https://adventofcode.com/2018/day/3"
-  (:require [clojure.java.io :as io]
+  (:require [util.file :as file]
             [clojure.edn :as edn]))
 
 (def input-file "aoc2018/day3_in.txt")
@@ -27,19 +27,18 @@
   (parse-one-line-to-hash-map "#1 @ 12,548: 19x10"))
 
 (defn get-input-xy-seq [file-name]
-  (->> (io/resource file-name)
-       io/reader
-       line-seq
+  (->> (file/read-file file-name)
        (map parse-one-line-to-hash-map)))
 
+(defn get-fabric-coordinates [{:keys [start-x start-y length-x length-y]}]
+  (for [dx (range length-x)
+        dy (range length-y)]
+    [(+ start-x dx) (+ start-y dy)]))
+
 (defn get-all-fabric-coordinate-seq [file-name]
-  (let [get-fabric-coordinates (fn [{:keys [start-x start-y length-x length-y]}]
-                                 (for [dx (range length-x)
-                                       dy (range length-y)]
-                                   [(+ start-x dx) (+ start-y dy)]))]
     (->> file-name
          get-input-xy-seq
-         (mapcat get-fabric-coordinates))))
+         (mapcat get-fabric-coordinates)))
 
 (defn get-overlap-count [fabric-coordinates]
   (->> fabric-coordinates
@@ -49,13 +48,12 @@
        count))
 
 (comment
-  (->> (get-all-fabric-coordinate-seq input-file)
-       get-overlap-count))
-
-
-(comment
   (for [dx (range 5)
         dy (range 6)]
     [(+ dx 3) (+ dy 5)])
   (get-input-xy-seq "aoc2018/day3_in_test.txt")
   (get-all-fabric-coordinate-seq "aoc2018/day3_in_test.txt"))
+
+(comment
+  (->> (get-all-fabric-coordinate-seq input-file)
+       get-overlap-count))
