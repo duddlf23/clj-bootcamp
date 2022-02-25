@@ -76,17 +76,20 @@
 ;; Use Part 1 functions
 (defn find-not-overlap-claim [claims]
   (let [fabrics-freq-hash-map (get-fabric-frequencies claims)
-        exactly-once? #(= 1 (get fabrics-freq-hash-map %))]
-    (->> (for [claim claims
-               :let [fabric-coordinates (get-fabric-coordinates claim)]
-               :when (every? exactly-once? fabric-coordinates)]
-           (:id claim))
+        exactly-once? #(= 1 (get fabrics-freq-hash-map %))
+        not-overlap? (fn [claim]
+                       (->> claim
+                            get-fabric-coordinates
+                            (every? exactly-once?)))]
+    (->> claims
+         (filter not-overlap?)
          first)))
 
 (comment
   (->> input-file
        get-input-claim-seq
-       find-not-overlap-claim))
+       find-not-overlap-claim
+       :id))
 
 
 ;; Compare coordinates range
