@@ -41,31 +41,55 @@
         y (range start-y end-y)]
     [x y]))
 
-(defn get-all-fabric-coordinate-seq [file-name]
-    (->> file-name
-         get-input-claim-seq
+(defn get-all-fabric-coordinate-seq [claims]
+    (->> claims
          (mapcat get-fabric-coordinates)))
 
-(defn get-overlap-count [fabric-coordinates]
-  (->> fabric-coordinates
-       frequencies
+(defn get-fabric-frequencies [claims]
+  (->> claims
+       get-all-fabric-coordinate-seq
+       frequencies))
+
+(defn get-overlap-count [claims]
+  (->> claims
+       get-fabric-frequencies
        vals
        (filter #(> % 1))
        count))
 
 (comment
-  (for [dx (range 5)
-        dy (range 6)]
-    [(+ dx 3) (+ dy 5)])
+  (->> (parse-one-line-to-hash-map "#1 @ 12,548: 19x10")
+       get-fabric-coordinates
+       frequencies)
   (get-input-claim-seq "aoc2018/day3_in_test.txt")
-  (get-all-fabric-coordinate-seq "aoc2018/day3_in_test.txt"))
+  (->> "aoc2018/day3_in_test.txt"
+       get-input-claim-seq
+       get-fabric-frequencies))
 
 (comment
-  (->> (get-all-fabric-coordinate-seq input-file)
+  (->> input-file
+       get-input-claim-seq
        get-overlap-count))
 
 ; Part 2
 
+;; Use Part 1 functions
+(defn find-not-overlap-claim [claims]
+  (let [fabrics-freq-hash-map (get-fabric-frequencies claims)
+        exactly-once? #(= 1 (get fabrics-freq-hash-map %))]
+    (->> (for [claim claims
+               :let [fabric-coordinates (get-fabric-coordinates claim)]
+               :when (every? exactly-once? fabric-coordinates)]
+           (:id claim))
+         first)))
+
+(comment
+  (->> input-file
+       get-input-claim-seq
+       find-not-overlap-claim))
+
+
+;; Compare coordinates range
 (defn not-overlap-range?
   "시작점(*-start)은 inclusive하고, 끝점(*-end)은 exclusive하다."
   [range1-start range1-end range2-start range2-end]
@@ -73,26 +97,32 @@
       (>= range1-start range2-end)))
 
 (defn not-overlap?
-  "두 클레임의 id가 같은 경우도 오버랩하지 않는 경우라 생각함
-  두 클레임의 x 좌표 범위나 y 좌표 범위가 서로 겹치는 부분이 없을 경우 오버랩하지 않는다."
+  "두 클레임의 x 좌표 범위나 y 좌표 범위가 서로 겹치는 부분이 없을 경우 오버랩하지 않는다."
   [claim1 claim2]
-  (let [{id1 :id start-x1 :start-x start-y1 :start-y end-x1 :end-x end-y1 :end-y} claim1
-        {id2 :id start-x2 :start-x start-y2 :start-y end-x2 :end-x end-y2 :end-y} claim2]
-    (or (= id1 id2)
-        (not-overlap-range? start-x1 end-x1 start-x2 end-x2)
+  (let [{start-x1 :start-x start-y1 :start-y end-x1 :end-x end-y1 :end-y} claim1
+        {start-x2 :start-x start-y2 :start-y end-x2 :end-x end-y2 :end-y} claim2]
+    (or (not-overlap-range? start-x1 end-x1 start-x2 end-x2)
         (not-overlap-range? start-y1 end-y1 start-y2 end-y2))))
 
-(defn find-not-overlap-claim-id [claims]
-  (->> (for [claim claims
-             :let [not-overlap-with-current-claim? (partial not-overlap? claim)]
-             :when (every? not-overlap-with-current-claim? claims)]
-         (:id claim))
+(defn same-claims?
+  "두 클레임의 id가 서로 같은지 검사"
+  [{id1 :id}
+   {id2 :id}]
+  (= id1 id2))
+
+(defn find-not-overlap-claim-id-v2 [claims]
+  (->> (for [current-claim claims
+             :let [not-overlap-with-current-claim? (partial not-overlap? current-claim)
+                   is-current-claim? (partial same-claims? current-claim)]
+             :when (every? #(or (is-current-claim? %)
+                                (not-overlap-with-current-claim? %)) claims)]
+         (:id current-claim))
        first))
 
 
 (comment
   (def claims (get-input-claim-seq input-file))
   (not-overlap-range? 1 2 2 5)
-  (find-not-overlap-claim-id claims))
+  (find-not-overlap-claim-id-v2 claims))
 
 
