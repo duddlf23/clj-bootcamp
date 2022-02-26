@@ -75,8 +75,8 @@
 
 ;; Use Part 1 functions
 (defn find-not-overlap-claim [claims]
-  (let [fabrics-freq-hash-map (get-fabric-frequencies claims)
-        exactly-once? #(= 1 (get fabrics-freq-hash-map %))
+  (let [fabrics-frequencies (get-fabric-frequencies claims)
+        exactly-once? #(= 1 (get fabrics-frequencies %))
         not-overlap? (fn [claim]
                        (->> claim
                             get-fabric-coordinates
