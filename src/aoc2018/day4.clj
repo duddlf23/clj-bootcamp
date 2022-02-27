@@ -30,6 +30,11 @@
   (->> (get-duration-minutes-seq start-date-time end-date-time)
        frequencies))
 
+{:year  2020
+ :month 4}
+
+
+
 (comment
   (parse-to-local-date-time "1518-05-11 00:58")
   (def mock-date-time (parse-to-local-date-time "1518-05-11 00:58"))
@@ -49,11 +54,10 @@
 
 (defn parse-one-line-to-hash-map [line]
   (->> line
-       (re-find #"\[(.+)\] (wakes up|falls asleep|Guard #(\d+) begins shift)")
+       (re-find #"\[(.+)\][^0-9]*(\d+)?")
        (drop 1)
-       ((fn [[date-time message guard-id]]
+       ((fn [[date-time guard-id]]
           {:local-date-time (parse-to-local-date-time date-time)
-           :message message
            :guard-id (edn/read-string guard-id)}))))
 
 (defn parse-input-log [file-name]
@@ -67,7 +71,7 @@
   (->> log
        :guard-id
        some?))
-
+for
 (defn separate-begin-log [date-time-sorted-logs]
   (->> date-time-sorted-logs
        (partition-by is-begins-shift-log?)
@@ -125,9 +129,12 @@
                                  separate-begin-log
                                  aggregate-guard-asleep-times
                                  find-most-asleep-guard-id))
+  (frequencies (get (->> sorted-logs
+                         separate-begin-log
+                         aggregate-guard-asleep-minutes) 571))
   (->> sorted-logs
-      separate-begin-log
-      aggregate-guard-asleep-minutes
-      (get-asleep-minutes-frequencies-certain-guard most-asleap-guard-id)
-      (apply max-key val)
-      key))
+       separate-begin-log
+       aggregate-guard-asleep-minutes
+       (get-asleep-minutes-frequencies-certain-guard most-asleap-guard-id)
+       (apply max-key val)
+       key))
