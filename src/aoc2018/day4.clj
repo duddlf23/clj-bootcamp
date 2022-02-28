@@ -18,9 +18,8 @@
           {:minute minute
            :guard-id guard-id}))))
 
-(defn parse-input-logs [file-name]
-  (->> (file/read-file file-name)
-       sort
+(defn parse-input-logs [logs]
+  (->> (sort logs)
        (map parse-one-log)))
 
 (defn is-begins-shift-log? [log]
@@ -55,7 +54,7 @@
                :actions actions}))))
 
 (comment
-  (-> input-file
+  (-> (file/read-file input-file)
       parse-input-logs
       separate-log-to-guards-actions))
 
@@ -77,10 +76,9 @@
        (reduce concat)
        frequencies
        (apply max-key val)
-       ((fn [[minute freq]]
-          {:guard-id guard-id
-           :minute minute
-           :freq freq}))))
+       (#(hash-map :guard-id guard-id
+                   :minute (key %)
+                   :freq (val %)))))
 
 ; Part 1
 
@@ -89,7 +87,8 @@
        (apply max-key get-total-asleep-times)))
 
 (comment
-  (->> (parse-input-logs input-file)
+  (->> (file/read-file input-file)
+       parse-input-logs
        separate-log-to-guards-actions
        find-most-asleep-guard-actions
        get-most-asleep-minute-portion-with-guard-id
@@ -103,7 +102,8 @@
        (apply max-key :freq)))
 
 (comment
-  (->> (parse-input-logs input-file)
+  (->> (file/read-file input-file)
+       parse-input-logs
        separate-log-to-guards-actions
        find-most-frequently-asleep-same-minute
        ((juxt :guard-id :minute))
