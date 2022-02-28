@@ -65,20 +65,16 @@
        (map #(- (second %) (first %)))
        (reduce +)))
 
-(defn get-asleep-minutes-frequencies [actions]
-  (->> actions
-       (partition 2)
-       (map #(range (first %) (second %)))
-       (reduce concat)
-       frequencies))
-
 (defn get-most-asleep-minute-portion
   "액션들을 입력받아 가장 많이 잤던 분을 찾아 빈도수와 함께 리턴
   ex) {:minute 30
        :freq 5}"
   [actions]
   (->> actions
-       get-asleep-minutes-frequencies
+       (partition 2)
+       (map #(range (first %) (second %)))
+       (reduce concat)
+       frequencies
        (apply max-key val)
        ((fn [[minute freq]]
           {:minute minute
