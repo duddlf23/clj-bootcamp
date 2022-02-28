@@ -54,8 +54,9 @@
        (map parse-one-field)
        (apply merge)))
 
-(defn parse-passports [passports]
-  (map parse-one-passport passports))
+(comment
+  (parse-one-field "hcl:#7d3b0c")
+  (parse-one-passport `("cid:325" "byr:2007 eyr:1933 hgt:188in" "pid:713080083 ecl:#d624ca iyr:2030 hcl:z")))
 
 ; Part 1
 
@@ -69,18 +70,11 @@
       set
       has-all-required-fields?))
 
-(defn get-valid-passports [parsed-passports]
-    (filter valid-passport? parsed-passports))
-
 (comment
-  (parse-one-field "hcl:#7d3b0c")
-  (parse-one-passport `("cid:325" "byr:2007 eyr:1933 hgt:188in" "pid:713080083 ecl:#d624ca iyr:2030 hcl:z"))
-  (-> input-file
-      file/read-file
-      split-logs
-      parse-passports
-      get-valid-passports
-      count))
+  (->> (split-logs (file/read-file input-file))
+       (map parse-one-passport)
+       (filter valid-passport?)
+       count))
 
 ; Part 2
 (defn valid-hgt? [hgt]
@@ -104,16 +98,11 @@
 (s/def ::passport (s/keys :req-un [::byr ::iyr ::eyr ::hgt ::hcl ::ecl ::pid]
                           :opt-un [::cid]))
 
-(defn get-valid-passports-with-spec [parsed-passports]
-         (filter #(s/valid? ::passport %) parsed-passports))
-
 (comment
-  (-> input-file
-      file/read-file
-      split-logs
-      parse-passports
-      get-valid-passports-with-spec
-      count))
+  (->> (split-logs (file/read-file input-file))
+       (map parse-one-passport)
+       (filter (partial s/valid? ::passport))
+       count))
 
 
 ; (def optional-fields #{:cid}))
