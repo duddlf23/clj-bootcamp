@@ -59,17 +59,18 @@
        parse-input-logs
        separate-log-to-guards-actions))
 
-(defn get-total-asleep-times [actions]
+(defn get-total-asleep-times [{:keys [actions]}]
   (->> actions
        (partition 2)
        (map #(- (second %) (first %)))
        (reduce +)))
 
-(defn get-most-asleep-minute-portion
-  "액션들을 입력받아 가장 많이 잤던 분을 찾아 빈도수와 함께 리턴
-  ex) {:minute 30
+(defn get-most-asleep-minute-portion-with-guard-id
+  "가드 id와 액션들을 입력받아 가장 많이 잤던 분을 찾고, 빈도수와 함께 리턴
+  ex) {:guard-id 877
+       :minute 30
        :freq 5}"
-  [actions]
+  [{:keys [guard-id actions]}]
   (->> actions
        (partition 2)
        (map #(range (first %) (second %)))
@@ -77,36 +78,28 @@
        frequencies
        (apply max-key val)
        ((fn [[minute freq]]
-          {:minute minute
+          {:guard-id guard-id
+           :minute minute
            :freq freq}))))
 
 ; Part 1
 
 (defn find-most-asleep-guard-actions [guards-actions]
   (->> guards-actions
-       (apply max-key #(get-total-asleep-times (:actions %)))))
+       (apply max-key get-total-asleep-times)))
 
 (comment
   (->> (parse-input-logs input-file)
        separate-log-to-guards-actions
        find-most-asleep-guard-actions
-       ((fn [{:keys [guard-id actions]}]
-          (->> actions
-               get-most-asleep-minute-portion
-               :minute
-               (* guard-id))))))
+       get-most-asleep-minute-portion-with-guard-id
+       ((fn [{:keys [guard-id minute]}]
+          (* guard-id minute)))))
 
 ; Part 2
-(defn map-most-asleep-minute-per-guard [guards-actions]
-  (->> guards-actions
-       (map (fn [{:keys [guard-id actions]}]
-              (-> actions
-                  get-most-asleep-minute-portion
-                  (assoc :guard-id guard-id))))))
-
 (defn find-most-frequently-asleep-same-minute [guard-id->action-minutes]
   (->> guard-id->action-minutes
-       map-most-asleep-minute-per-guard
+       (map get-most-asleep-minute-portion-with-guard-id)
        (apply max-key :freq)))
 
 (comment
