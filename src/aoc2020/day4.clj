@@ -12,25 +12,28 @@
        (catch Exception e nil)))
 
 (defn split-logs [logs]
-  (let [is-blank? #(= % "")
-        is-blank-lines-partition? #(is-blank? (first %))]
+  (let [blank? #(= % "")
+        blank-lines-partition? #(blank? (first %))]
     (->> logs
-         (partition-by is-blank?)
-         (remove is-blank-lines-partition?))))
+         (partition-by blank?)
+         (remove blank-lines-partition?))))
 
 (def int-fields #{"byr" "iyr" "eyr"})
+
+(defn field->map [[field-name field-value]]
+  (let [parsed-value (if (int-fields field-name)
+                       (parse-int-safely field-value)
+                       field-value)]
+    (hash-map (keyword field-name) parsed-value)))
 
 (defn parse-one-field
   "하나의 필드 정보를 파싱함
   ex) hcl:#7d3b0c -> {:hcl #7d3b0c}
       byr:1976 -> {:byr 1976}"
   [field]
-  (-> (re-find #"(.+):(.+)" field)
-      ((fn [[_ field-name field-value]]
-         (let [parsed-value (if (int-fields field-name)
-                              (parse-int-safely field-value)
-                              field-value)]
-           {(keyword field-name) parsed-value})))))
+  (->> (re-find #"(.+):(.+)" field)
+       (drop 1)
+       field->map))
 
 (defn parse-one-passport
   "여러 줄로 나뉘어진 하나의 여권 정보를 해시 맵으로 변환
@@ -52,8 +55,7 @@
        (apply merge)))
 
 (defn parse-passports [passports]
-  (->> passports
-       (map parse-one-passport)))
+  (map parse-one-passport passports))
 
 ; Part 1
 
@@ -62,12 +64,13 @@
 (defn has-all-required-fields? [fields]
   (set/superset? fields required-fields))
 
-(defn count-valid-passports [parsed-passports]
-  (let [get-fields #(set (keys %))
-        is-valid? #(has-all-required-fields? (get-fields %))]
-    (->> parsed-passports
-         (filter is-valid?)
-         count)))
+(defn valid-passport? [passport]
+  (-> (keys passport)
+      set
+      has-all-required-fields?))
+
+(defn get-valid-passports [parsed-passports]
+    (filter valid-passport? parsed-passports))
 
 (comment
   (parse-one-field "hcl:#7d3b0c")
@@ -76,7 +79,8 @@
       file/read-file
       split-logs
       parse-passports
-      count-valid-passports))
+      get-valid-passports
+      count))
 
 ; Part 2
 (defn valid-hgt? [hgt]
@@ -95,22 +99,21 @@
 (s/def ::hcl #(re-matches #"^#[0-9a-f]{6}$" %))
 (s/def ::ecl #{"amb" "blu" "brn" "gry" "grn" "hzl" "oth"})
 (s/def ::pid #(re-matches #"^[0-9]{9}$" %))
-(s/def ::cid nil)
+(s/def ::cid any?)
 
 (s/def ::passport (s/keys :req-un [::byr ::iyr ::eyr ::hgt ::hcl ::ecl ::pid]
                           :opt-un [::cid]))
 
-(defn count-valid-passports-with-spec [parsed-passports]
-    (->> parsed-passports
-         (filter #(s/valid? ::passport %))
-         count))
+(defn get-valid-passports-with-spec [parsed-passports]
+         (filter #(s/valid? ::passport %) parsed-passports))
 
 (comment
   (-> input-file
       file/read-file
       split-logs
       parse-passports
-      count-valid-passports-with-spec))
+      get-valid-passports-with-spec
+      count))
 
 
 ; (def optional-fields #{:cid}))
