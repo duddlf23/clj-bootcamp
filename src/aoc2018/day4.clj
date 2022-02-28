@@ -24,16 +24,16 @@
        (map parse-one-log)))
 
 (defn is-begins-shift-log? [log]
-  (->> log
-       :guard-id
-       some?))
+  (-> log
+      :guard-id
+      some?))
 
 (defn get-last-guard-id
   "교대 근무 로그만 연속으로 모여 있을 경우 마지막 근무 가드의 id만 가져옴"
   [begins-shift-logs]
-  (->> begins-shift-logs
-       last
-       :guard-id))
+  (-> begins-shift-logs
+      last
+      :guard-id))
 
 (defn separate-log-to-guards-actions
   "파싱된 로그들을 입력받아 가드마다의 액션 타임(분)을 집계
@@ -55,9 +55,9 @@
                :actions actions}))))
 
 (comment
-  (->> input-file
-       parse-input-logs
-       separate-log-to-guards-actions))
+  (-> input-file
+      parse-input-logs
+      separate-log-to-guards-actions))
 
 (defn get-total-asleep-times [{:keys [actions]}]
   (->> actions
@@ -93,8 +93,8 @@
        separate-log-to-guards-actions
        find-most-asleep-guard-actions
        get-most-asleep-minute-portion-with-guard-id
-       ((fn [{:keys [guard-id minute]}]
-          (* guard-id minute)))))
+       ((juxt :guard-id :minute))
+       (apply *)))
 
 ; Part 2
 (defn find-most-frequently-asleep-same-minute [guard-id->action-minutes]
@@ -106,5 +106,5 @@
   (->> (parse-input-logs input-file)
        separate-log-to-guards-actions
        find-most-frequently-asleep-same-minute
-       ((fn [{:keys [minute guard-id]}]
-          (* minute guard-id)))))
+       ((juxt :guard-id :minute))
+       (apply *)))
