@@ -5,8 +5,9 @@
 (def input-file "aoc2018/day4_in.txt")
 
 (defn parse-int [s]
-  (if s (Integer/parseInt s) nil))
-
+  (when s (Integer/parseInt s)))
+  ;(if s (Integer/parseInt s) nil)
+(parse-int "12")
 (defn parse-one-log
   "로그를 파싱해 문제에 필요한 요소인 가드 id와 액션이 일어난 분만 캐치함"
   [line]
@@ -72,7 +73,7 @@
   [{:keys [guard-id actions]}]
   (->> actions
        (partition 2)
-       (map #(range (first %) (second %)))
+       (map (partial apply range))
        (reduce concat)
        frequencies
        (apply max-key val)
