@@ -12,11 +12,9 @@
        (catch Exception e nil)))
 
 (defn split-logs [logs]
-  (let [blank? #(= % "")
-        blank-lines-partition? #(blank? (first %))]
-    (->> logs
-         (partition-by blank?)
-         (remove blank-lines-partition?))))
+  (->> logs
+       (partition-by str/blank?)
+       (remove #(some str/blank? %))))
 
 (def int-fields #{"byr" "iyr" "eyr"})
 
