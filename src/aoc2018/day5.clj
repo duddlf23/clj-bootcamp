@@ -18,6 +18,7 @@
   (get change-case-map letter))
 
 ; Part 1
+; react
 (defn alchemical-reduction-merge-new-polymer [acc-polymers new-polymer]
   (if (= (change-case new-polymer) (peek acc-polymers))
     (pop acc-polymers)
