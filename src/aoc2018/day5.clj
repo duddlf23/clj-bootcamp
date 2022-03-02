@@ -18,10 +18,10 @@
   (get change-case-map letter))
 
 ; Part 1
-(defn alchemical-reduction-merge-new-polymer [acc-polymers-vec new-polymer]
-  (if (= (change-case new-polymer) (last acc-polymers-vec))
-    (pop acc-polymers-vec)
-    (conj acc-polymers-vec new-polymer)))
+(defn alchemical-reduction-merge-new-polymer [acc-polymers new-polymer]
+  (if (= (change-case new-polymer) (peek acc-polymers))
+    (pop acc-polymers)
+    (conj acc-polymers new-polymer)))
 
 (defn alchemical-reduce [polymers-str]
   (reduce alchemical-reduction-merge-new-polymer
