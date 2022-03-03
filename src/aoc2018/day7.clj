@@ -11,15 +11,13 @@
   (->> line
        (re-find #"^Step ([A-Z]{1}) must be finished before step ([A-Z]{1}) can begin.$")
        ((fn [[_ required step]]
-          {:required required
-           :step step}))))
+          {:required (.charAt required 0)
+           :step (.charAt step 0)}))))
 
 (def input-dependencies (->> (file/read-file "aoc2018/day7_in.txt")
                              (map line->dependency)))
 
-(def all-steps (->> (seq "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-                    (map str)
-                    set))
+(def all-steps (set "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
 
 (defn remove-done-dependencies
   "스텝들이 끝났을 때 그 스텝들이 required인 디펜던시들을 모두 제거한다."
