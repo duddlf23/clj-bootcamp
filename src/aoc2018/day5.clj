@@ -19,13 +19,13 @@
 
 ; Part 1
 ; react
-(defn alchemical-reduction-merge-new-polymer [acc-polymers new-polymer]
+(defn react [acc-polymers new-polymer]
   (if (= (change-case new-polymer) (peek acc-polymers))
     (pop acc-polymers)
     (conj acc-polymers new-polymer)))
 
 (defn alchemical-reduce [polymers-str]
-  (reduce alchemical-reduction-merge-new-polymer
+  (reduce react
           []
           polymers-str))
 
@@ -36,13 +36,13 @@
   [polymers-str]
   (let [reduced (atom [])]
     (run!
-      (partial swap! reduced alchemical-reduction-merge-new-polymer)
+      (partial swap! reduced react)
       polymers-str)
     @reduced))
 
 (comment
   (= (last [\a \b]) (change-case \B))
-  (alchemical-reduction-merge-new-polymer [\a \e \f] \F)
+  (react [\a \e \f] \F)
   (alchemical-reduce "dabAcCaCBAcCcaDA")
   (-> input
       alchemical-reduce
