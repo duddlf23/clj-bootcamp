@@ -3,7 +3,6 @@
   (:require [util.file :as file]
             [clojure.string :as string]))
 
-
 (defn line->dependency
   "라인 하나를 파싱해 디펜던시 정보를 구함 만약 A를 하기 위해 B가 반드시 끝나야 한다면
   {:required B, :step A} 가 리턴된다."
@@ -13,6 +12,8 @@
        ((fn [[_ required step]]
           {:required (.charAt required 0)
            :step (.charAt step 0)}))))
+
+; 키워드로
 
 (def input-dependencies (->> (file/read-file "aoc2018/day7_in.txt")
                              (map line->dependency)))
@@ -24,7 +25,7 @@
   [dependencies done-steps]
   (remove (comp (set done-steps) :required) dependencies))
 
-(defn find-executable-step
+(defn find-executable-step ;next-step
   "디펜던시가 모두 끝난 스텝을 하나 찾는데 동시에 가능한 스텝이 여러개가 있을 경우 알파벳 순서로 가장 빠른 스텝부터 고름"
   [dependencies steps]
   (let [dependent-steps (set (map :step dependencies))]
@@ -52,7 +53,7 @@
   (->> (iterate complete-executable-step {:remain-steps all-steps
                                           :ordered-done-steps []
                                           :dependencies dependencies})
-       (drop-while (comp seq :remain-steps))
+       (drop-while (comp seq :remain-steps)) ; filter
        first
        :ordered-done-steps))
 
@@ -77,6 +78,7 @@
        (map #(hash-map :step %
                        :completed-time (+ current-time (required-time %))))
        (into workers)))
+; 스텝 -> 워커 나누기
 
 (defn find-completed-steps
   "현재 시각이 스텝이 완료되는 시간보다 크다면 그 스텝은 완료됐다는 것이다.
