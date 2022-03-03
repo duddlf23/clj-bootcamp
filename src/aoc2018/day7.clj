@@ -17,6 +17,10 @@
 (def input-dependencies (->> (file/read-file "aoc2018/day7_in.txt")
                              (map line->dependency)))
 
+(def all-steps (->> (seq "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                    (map str)
+                    set))
+
 (defn remove-done-dependencies
   "스텝들이 끝났을 때 그 스텝들이 required인 디펜던시들을 모두 제거한다."
   [dependencies done-steps]
@@ -57,11 +61,8 @@
 (comment
   (line->dependency "Step U must be finished before step A can begin.")
 
-  (let [all-steps (->> input-dependencies
-                       (mapcat (juxt :required :step))
-                       set)]
-    (->> (get-complete-order input-dependencies all-steps)
-         (apply str))))
+  (->> (get-complete-order input-dependencies all-steps)
+       (apply str)))
 
 
 ; Part 2
@@ -145,7 +146,4 @@
 
   (get-all-steps-completed-time [{:required "A" :step "B"}] #{"A" "B"})
 
-  (let [all-steps (->> input-dependencies
-                       (mapcat (juxt :required :step))
-                       set)]
-    (get-all-steps-completed-time input-dependencies all-steps)))
+  (get-all-steps-completed-time input-dependencies all-steps))
