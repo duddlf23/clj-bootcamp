@@ -16,19 +16,21 @@
 
 (defn nop
   "nop 연산을 수행해 스테이트를 업데이트한다."
-  [{:keys [cursor] :as pre-state} _]
-  (assoc pre-state :cursor (inc cursor)))
+  [pre-state _]
+  (update pre-state :cursor inc))
 
 (defn jmp
   "jmp 연산을 수행해 스테이트를 업데이트한다."
-  [{:keys [cursor] :as pre-state} idx-change]
-  (assoc pre-state :cursor (+ cursor idx-change)))
+  [pre-state idx-change]
+  (update pre-state :cursor + idx-change))
 
+(update {:a 3 :b 4} :a inc)
 (defn acc
   "acc 연산을 수행해 스테이트를 업데이트한다."
-  [{:keys [accumulator cursor] :as pre-state} acc-change]
-  (assoc pre-state :accumulator (+ accumulator acc-change) :cursor (inc cursor)))
-
+  [pre-state acc-change]
+  (-> (update pre-state :accumulator + acc-change)
+      (update :cursor inc)))
+;op->fn
 (def op-funcs
   "op 키워드에 따른 실제 업데이트 함수 매핑"
   {:nop nop
@@ -37,9 +39,9 @@
 
 (defn update-state-after-op
   "실제 하나의 op를 수행한 후 해당 op에 따라 스테이트를 업데이트하고 커서의 히스토리 또한 같이 업데이트"
-  [{:keys [cursor cursor-history] :as pre-state} {:keys [op arg]}]
+  [{:keys [cursor] :as pre-state} {:keys [op arg]}]
   (-> ((op-funcs op) pre-state arg)
-      (assoc :cursor-history (conj cursor-history cursor))))
+      (update :cursor-history conj cursor)))
 
 (defn update-program-status
   "실제 op를 수행하진 않고 program-status(중복된 명령에 도달했는지, 더 이상 실행할 명령이 없는지) 만 업데이트한다."
@@ -63,8 +65,7 @@
                     :cursor-history #{}
                     :program-status :running}
         result (->> (iterate execute-next-op init-state)
-                    (filter #(-> (:program-status %)
-                                 (not= :running)))
+                    (filter #(not= :running (:program-status %)))
                     first)]
     (select-keys result [:accumulator :program-status])))
 
@@ -75,13 +76,12 @@
 ; Part 2
 
 ; set을 함수로 썼기에 엄밀히 말하면 리턴이 boolean 값은 아니다. 그런데도 함수 이름에 ?을 붙여 써도 되나
-(defn nop-jmp-op? [{op :op}]
-  (#{:jmp :nop} op))
+(def non-acc-ops #{:jmp :nop})
 
-(defn get-nop-jmp-cursors
+(defn get-non-acc-ops-cursors
   "keep-indexed를 활용해 instruction들 중 nop이나 jmp op의 커서들만 찾는다."
   [instructions]
-  (keep-indexed #(when (nop-jmp-op? %2) %1) instructions))
+  (keep-indexed #(when (non-acc-ops (:op %2)) %1) instructions))
 
 (def change-op
   "nop이라면 jmp로, jmp라면 nop으로 바꾼다."
@@ -96,9 +96,8 @@
                                 :arg arg})))
 
 (comment
-  (->> (get-nop-jmp-cursors input)
+  (->> (get-non-acc-ops-cursors input)
        (map (partial change-op-at-cursor input))
        (map execute-instructions)
-       (filter #(-> (:program-status %)
-                    (= :termination)))
+       (filter #(= :termination (:program-status %)))
        first))
