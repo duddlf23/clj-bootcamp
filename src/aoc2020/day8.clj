@@ -46,7 +46,10 @@
   [pre-state status]
   (assoc pre-state :program-status status))
 
-(defn execute-next-op [{:keys [instructions cursor cursor-history] :as pre-state}]
+(defn execute-next-op
+  "이전의 상태를 받아와 커서 정보를 바탕으로 중복된 명령을 실행했는지,
+  프로그램이 끝났는지 검사하거나 다음 오퍼레이션을 실행해 스테이트를 업데이트한다."
+  [{:keys [instructions cursor cursor-history] :as pre-state}]
   (let [op (nth instructions cursor nil)]
     (cond
       (cursor-history cursor) (update-program-status pre-state :duplicate-run)
@@ -60,7 +63,8 @@
                     :cursor-history #{}
                     :program-status :running}
         result (->> (iterate execute-next-op init-state)
-                    (filter #(not= :running (:program-status %)))
+                    (filter #(-> (:program-status %)
+                                 (not= :running)))
                     first)]
     (select-keys result [:accumulator :program-status])))
 
@@ -95,5 +99,6 @@
   (->> (get-nop-jmp-cursors input)
        (map (partial change-op-at-cursor input))
        (map execute-instructions)
-       (filter #(= :termination (:program-status %)))
+       (filter #(-> (:program-status %)
+                    (= :termination)))
        first))
