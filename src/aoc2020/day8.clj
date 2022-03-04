@@ -14,6 +14,13 @@
   (->> (file/read-file "aoc2020/day8_in.txt")
        (mapv line->operation)))
 
+;state의 데이터 포맷 예시
+; {:instructions 주어진 instruction 목록
+;  :accumulator 현재 accumulator 값
+;  :cursor 현재 명령의 인덱스
+;  :cursor-history 이제까지 실행한 명령 인덱스들의 집합
+;  :program-status [:running|:duplicate-run|:termination]}
+
 (defn nop
   "nop 연산을 수행해 스테이트를 업데이트한다."
   [pre-state _]
@@ -24,14 +31,13 @@
   [pre-state idx-change]
   (update pre-state :cursor + idx-change))
 
-(update {:a 3 :b 4} :a inc)
 (defn acc
   "acc 연산을 수행해 스테이트를 업데이트한다."
   [pre-state acc-change]
   (-> (update pre-state :accumulator + acc-change)
       (update :cursor inc)))
-;op->fn
-(def op-funcs
+
+(def op->fn
   "op 키워드에 따른 실제 업데이트 함수 매핑"
   {:nop nop
    :jmp jmp
@@ -40,7 +46,7 @@
 (defn update-state-after-op
   "실제 하나의 op를 수행한 후 해당 op에 따라 스테이트를 업데이트하고 커서의 히스토리 또한 같이 업데이트"
   [{:keys [cursor] :as pre-state} {:keys [op arg]}]
-  (-> ((op-funcs op) pre-state arg)
+  (-> ((op->fn op) pre-state arg)
       (update :cursor-history conj cursor)))
 
 (defn update-program-status
