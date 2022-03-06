@@ -12,11 +12,6 @@
        (map edn/read-string)
        (zipmap [:x :y])))
 
-(defn merge-with-target-id [target-id {:keys [x y]}]
-  {:target-id target-id
-   :x x
-   :y y})
-
 (def input-targets
   "입력 좌표들을 파싱하고, 0부터 차례대로 증가된 인덱스를 target-id로 합침
   ex) Input: 350, 354
@@ -25,9 +20,9 @@
                {:target-id 1, :x 238, :y 298}, ...]"
   (->> (file/read-file "aoc2018/day6_in.txt")
        (map line->coordinate)
-       (map merge-with-target-id (range))))
+       (map-indexed (fn [idx coord] (assoc coord :target-id idx)))))
 
-(defn get-border-coordinates [points]
+(defn get-border-coords [points]
   (let [xs (map :x points)
         ys (map :y points)]
     {:min-x (apply min xs)
@@ -64,10 +59,10 @@
       Output: [{:target-id 0, :distance 10},
                {:target-id 1, :distance 177}, ...]"
   [targets point]
-  (let [target-ids (map :target-id targets)]
-    (->> targets
-         (map #(get-distance point %))
-         (map #(hash-map :target-id %1 :distance %2) target-ids))))
+  (->> targets
+       (map (fn [{:keys [target-id] :as target}]
+              {:target-id target-id
+               :distance (get-distance point target)}))))
 
 ;; Part 1
 
@@ -79,8 +74,7 @@
        (group-by :distance)
        (apply min-key key)
        val
-       (map :target-id)
-       set))
+       (map :target-id)))
 
 (defn closest-target-unique? [{:keys [closest-target-ids]}]
   (= 1 (count closest-target-ids)))
@@ -93,18 +87,17 @@
                ({:x 135, :y 237}
                 {:x 136, :y 237}, ...), ...)"
   [targets]
-  (let [border-coords (get-border-coordinates targets)
+  (let [border-coords (get-border-coords targets)
         points-in-bounded-area (get-points-in-bounded-area border-coords)
         point-in-boundary? (border-coords->point-in-boundary? border-coords)
         infinite-area? #(some point-in-boundary? %)]
     (->> points-in-bounded-area
-         (map #(get-closest-target-ids targets %))
-         (map #(hash-map :point %1 :closest-target-ids %2) points-in-bounded-area)
+         (map #(hash-map :point %
+                         :closest-target-ids (get-closest-target-ids targets %)))
          (filter closest-target-unique?)
          (group-by :closest-target-ids)
          vals
-         (map (partial map :point))
-         (remove infinite-area?))))
+         (remove #(infinite-area? (map :point %))))))
 
 
 (comment
@@ -122,19 +115,18 @@
 
 (comment
   (sum-all-distances-to-targets input-targets {:x 355 :y 353})
-  (let [border-coords (get-border-coordinates input-targets)
+  (let [border-coords (get-border-coords input-targets)
         points-in-bounded-area (get-points-in-bounded-area border-coords)
-        point-in-boundary? (border-coords->point-in-boundary? border-coords)
-        get-total-distance (partial sum-all-distances-to-targets input-targets)]
+        point-in-boundary? (border-coords->point-in-boundary? border-coords)]
 
     (->> points-in-bounded-area
          (filter point-in-boundary?)
-         (map get-total-distance)
+         (map #(sum-all-distances-to-targets input-targets %))
          (apply min))
     ; -> 10467
     ; 입력으로 주어진 점들로 이뤄진 경계 영역의 경계선에 있는 점들은 모두 거리의 합이 10000보다 크기 때문에 그 영역 안만 고려한다.
 
     (->> points-in-bounded-area
-         (map get-total-distance)
+         (map #(sum-all-distances-to-targets input-targets %))
          (filter #(< % 10000))
          count)))
