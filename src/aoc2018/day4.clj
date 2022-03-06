@@ -2,26 +2,21 @@
   "https://adventofcode.com/2018/day/4"
   (:require [util.file :as file]))
 
-(def input-file "aoc2018/day4_in.txt")
-
 (defn parse-int [s]
   (when s (Integer/parseInt s)))
 
 (defn parse-one-log
   "로그를 파싱해 문제에 필요한 요소인 가드 id와 액션이 일어난 분만 캐치함"
   [line]
-  (->> line
-       (re-find #".*:(\d+)[^0-9]*(\d+)?")
-       (drop 1)
-       (map parse-int)
-       ((fn [[minute guard-id]]
-          {:minute minute
-           :guard-id guard-id}))))
+  (let [[_ minute guard-id] (re-find #".*:(\d+)[^0-9]*(\d+)?" line)]
+    {:minute (parse-int minute)
+     :guard-id (parse-int guard-id)}))
 
-(defn sort-logs [logs] (sort logs))
-(defn parse-input-logs [logs] (map parse-one-log logs))
+(def input (->> (file/read-file "aoc2018/day4_in.txt")
+                sort
+                (map parse-one-log)))
 
-(defn is-begins-shift-log? [log]
+(defn begins-shift-log? [log]
   (-> log
       :guard-id
       some?))
@@ -43,9 +38,7 @@
   [actions]
   (->> actions
        (partition 2)
-       (map (fn [[sleep wake]]
-              {:sleep sleep
-               :wake wake}))))
+       (map #(zipmap [:sleep :wake] %))))
 
 (defn separate-log-to-guards-actions
   "파싱된 로그들을 입력받아 가드마다의 액션 타임(분)을 집계
@@ -63,10 +56,10 @@
                    :wake 44}, ...]}, ...]"
   [logs]
   (->> logs
-       (partition-by is-begins-shift-log?)
+       (partition-by begins-shift-log?)
        (partition 2)
        (map (fn [[begins-shift-logs actions]]
-              {(get-last-guard-id begins-shift-logs) (map :minute actions)}))
+              {(get-last-guard-id begins-shift-logs) (mapv :minute actions)}))
        (apply merge-with concat)
        (map (fn [[guard-id actions]]
               {:guard-id guard-id
@@ -74,17 +67,14 @@
 
 (comment
   (actions->asleep-wake-map-seq [2 6 10 44])
-  (-> (file/read-file input-file)
-      sort-logs
-      parse-input-logs
-      separate-log-to-guards-actions))
+  (separate-log-to-guards-actions input))
 
-(defn get-total-asleep-times [{:keys [actions]}]
+(defn get-total-sleep-times [{:keys [actions]}]
   (->> actions
        (map #(- (:wake %) (:sleep %)))
        (reduce +)))
 
-(defn get-most-asleep-minute-portion-with-guard-id
+(defn get-most-sleep-minute-portion
   "가드 id와 액션들을 입력받아 가장 많이 잤던 분을 찾고, 빈도수와 함께 리턴
   ex) {:guard-id 877
        :minute 30
@@ -103,29 +93,25 @@
 
 (defn find-most-asleep-guard-actions [guards-actions]
   (->> guards-actions
-       (apply max-key get-total-asleep-times)))
+       (apply max-key get-total-sleep-times)))
 
 (comment
-  (->> (file/read-file input-file)
-       sort-logs
-       parse-input-logs
+  (->> input
        separate-log-to-guards-actions
        find-most-asleep-guard-actions
-       get-most-asleep-minute-portion-with-guard-id
+       get-most-sleep-minute-portion
        ((juxt :guard-id :minute))
        (apply *)))
 
 ; Part 2
-(defn find-most-frequently-asleep-same-minute [guard-id->action-minutes]
+(defn find-most-frequently-sleep-same-minute [guard-id->action-minutes]
   (->> guard-id->action-minutes
-       (map get-most-asleep-minute-portion-with-guard-id)
+       (map get-most-sleep-minute-portion)
        (apply max-key :freq)))
 
 (comment
-  (->> (file/read-file input-file)
-       sort-logs
-       parse-input-logs
+  (->> input
        separate-log-to-guards-actions
-       find-most-frequently-asleep-same-minute
+       find-most-frequently-sleep-same-minute
        ((juxt :guard-id :minute))
        (apply *)))
