@@ -28,7 +28,7 @@
       last
       :guard-id))
 
-(defn actions->asleep-wake-map-seq
+(defn actions->sleep-wake-map-seq
   "액션 타임(분)의 시퀀스를 입력받아 연속된 두 개씩 묶어 자는 시간과 일어난 시간의 해시 맵의 시퀀스로 반환
   Input: [6 25 38 51 ...]
   Output: [{:sleep 6
@@ -43,7 +43,7 @@
 (defn separate-log-to-guards-actions
   "파싱된 로그들을 입력받아 가드마다의 액션 타임(분)을 집계
   포맷: {:guard-id guard-id
-        :actions (asleep awake asleep awake ...)}
+        :actions (sleep wake sleep wake ...)}
   ex) [{:guard-id 877
         :actions [{:sleep 6
                    :wake 25},
@@ -63,10 +63,10 @@
        (apply merge-with concat)
        (map (fn [[guard-id actions]]
               {:guard-id guard-id
-               :actions (actions->asleep-wake-map-seq actions)}))))
+               :actions (actions->sleep-wake-map-seq actions)}))))
 
 (comment
-  (actions->asleep-wake-map-seq [2 6 10 44])
+  (actions->sleep-wake-map-seq [2 6 10 44])
   (separate-log-to-guards-actions input))
 
 (defn get-total-sleep-times [{:keys [actions]}]
@@ -91,14 +91,14 @@
 
 ; Part 1
 
-(defn find-most-asleep-guard-actions [guards-actions]
+(defn find-most-sleep-guard-actions [guards-actions]
   (->> guards-actions
        (apply max-key get-total-sleep-times)))
 
 (comment
   (->> input
        separate-log-to-guards-actions
-       find-most-asleep-guard-actions
+       find-most-sleep-guard-actions
        get-most-sleep-minute-portion
        ((juxt :guard-id :minute))
        (apply *)))
