@@ -80,14 +80,13 @@
   (execute-instructions input))
 
 ; Part 2
-
-; set을 함수로 썼기에 엄밀히 말하면 리턴이 boolean 값은 아니다. 그런데도 함수 이름에 ?을 붙여 써도 되나
 (def non-acc-ops #{:jmp :nop})
 
 (defn get-non-acc-ops-cursors
-  "keep-indexed를 활용해 instruction들 중 nop이나 jmp op의 커서들만 찾는다."
+  "keep-indexed를 활용해 instruction들 중 nop이나 jmp op의 커서(인덱스)들만 찾는다."
   [instructions]
-  (keep-indexed #(when (non-acc-ops (:op %2)) %1) instructions))
+  (keep-indexed (fn [idx {op :op}]
+                  (when (non-acc-ops op) idx)) instructions))
 
 (def change-op
   "nop이라면 jmp로, jmp라면 nop으로 바꾼다."
@@ -97,13 +96,11 @@
 (defn change-op-at-cursor
   "특정 커서의 op를 nop <-> jmp 로 바꾼다."
   [instructions cursor]
-  (let [{:keys [op arg]} (nth instructions cursor)]
-    (assoc instructions cursor {:op (change-op op)
-                                :arg arg})))
+  (update-in instructions [cursor :op] change-op))
 
 (comment
   (->> (get-non-acc-ops-cursors input)
-       (map (partial change-op-at-cursor input))
+       (map #(change-op-at-cursor input %))
        (map execute-instructions)
        (filter #(= :termination (:program-status %)))
        first))
