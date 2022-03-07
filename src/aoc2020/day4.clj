@@ -16,22 +16,26 @@
        (partition-by str/blank?)
        (remove #(some str/blank? %))))
 
-(def int-fields #{"byr" "iyr" "eyr"})
+(defn parse-height [hgt]
+  (let [[_ value unit] (re-find #"^(\d+)(cm|in)$" hgt)]
+    {:unit unit
+     :value (parse-int-safely value)}))
 
-(defn field->map [[field-name field-value]]
-  (let [parsed-value (if (int-fields field-name)
-                       (parse-int-safely field-value)
-                       field-value)]
-    (hash-map (keyword field-name) parsed-value)))
+(def key->parse-fn
+  {:byr parse-int-safely
+   :iyr parse-int-safely
+   :eyr parse-int-safely
+   :hgt parse-height})
 
 (defn parse-one-field
   "하나의 필드 정보를 파싱함
   ex) hcl:#7d3b0c -> {:hcl #7d3b0c}
       byr:1976 -> {:byr 1976}"
   [field]
-  (->> (re-find #"(.+):(.+)" field)
-       (drop 1)
-       field->map))
+  (let [[_ k v] (re-find #"(.+):(.+)" field)
+        field-keyword (keyword k)
+        parse (key->parse-fn field-keyword identity)]
+    {field-keyword (parse v)}))
 
 (defn parse-one-passport
   "여러 줄로 나뉘어진 하나의 여권 정보를 해시 맵으로 변환
@@ -52,6 +56,9 @@
        (map parse-one-field)
        (apply merge)))
 
+(def input (->> (split-logs (file/read-file input-file))
+                (map parse-one-passport)))
+
 (comment
   (parse-one-field "hcl:#7d3b0c")
   (parse-one-passport `("cid:325" "byr:2007 eyr:1933 hgt:188in" "pid:713080083 ecl:#d624ca iyr:2030 hcl:z")))
@@ -69,25 +76,21 @@
       has-all-required-fields?))
 
 (comment
-  (->> (split-logs (file/read-file input-file))
-       (map parse-one-passport)
+  (->> input
        (filter valid-passport?)
        count))
 
 ; Part 2
-(defn valid-hgt? [hgt]
-  (->> (re-find #"^(\d+)(cm|in)$" hgt)
-       ((fn [[_ num-str unit]]
-          (let [num (parse-int-safely num-str)]
-            (case unit
-              "cm" (<= 150 num 193)
-              "in" (<= 59 num 76)
-              false))))))
+(defn valid-height? [{:keys [unit value]}]
+  (case unit
+    "cm" (<= 150 value 193)
+    "in" (<= 59 value 76)
+    false))
 
 (s/def ::byr (s/int-in 1920 2003))
 (s/def ::iyr (s/int-in 2010 2021))
 (s/def ::eyr (s/int-in 2020 2031))
-(s/def ::hgt valid-hgt?)
+(s/def ::hgt valid-height?)
 (s/def ::hcl #(re-matches #"^#[0-9a-f]{6}$" %))
 (s/def ::ecl #{"amb" "blu" "brn" "gry" "grn" "hzl" "oth"})
 (s/def ::pid #(re-matches #"^[0-9]{9}$" %))
@@ -97,19 +100,5 @@
                           :opt-un [::cid]))
 
 (comment
-  (->> (split-logs (file/read-file input-file))
-       (map parse-one-passport)
-       (filter (partial s/valid? ::passport))
-       count))
-
-
-; (def optional-fields #{:cid}))
-
-;(defn has-limited-optional-fields? [fields]
-;  (-> (set/difference fields required-fields)
-;      (set/subset? optional-fields)))
-;
-;(defn has-valid-fields? [fields]
-;  (->> fields
-;       ((juxt has-all-required-fields? has-limited-optional-fields?))
-;       (every? true?)))
+  (-> (filter #(s/valid? ::passport %) input)
+      count))
