@@ -81,11 +81,11 @@
 
 (defn get-finite-areas
   "타겟 포인트들로 인해 생성되는 영역들 중 유한 영역들의 시퀀스를 구한다.
-  하나의 영역은 포함된 점들의 시퀀스로 표현했다.
-  ex) Output: (({:x 309, :y 274}
-                {:x 309, :y 275}, ...),
-               ({:x 135, :y 237}
-                {:x 136, :y 237}, ...), ...)"
+  하나의 영역은 포함된 점들의 시퀀스와 가장 가까운 타켓 포인트의 id로 표현했다.
+  ex) Output: ({:closest-target-id 0
+                :points ({:x 309, :y 274}, {:x 309, :y 275}, ...)},
+               {:closest-target-id 1
+                :points ({:x 135, :y 237}, {:x 136, :y 237}, ...)}, ...)"
   [targets]
   (let [border-coords (get-border-coords targets)
         points-in-bounded-area (get-points-in-bounded-area border-coords)
@@ -96,15 +96,16 @@
                          :closest-target-ids (get-closest-target-ids targets %)))
          (filter closest-target-unique?)
          (group-by :closest-target-ids)
-         vals
-         (map #(map :point %))
-         (remove infinite-area?))))
+         (map (fn [[closest-target-ids points-with-target]]
+                {:closest-target-id (first closest-target-ids)
+                 :points (map :point points-with-target)}))
+         (remove #(infinite-area? (:points %))))))
 
 
 (comment
   (->> input-targets
        get-finite-areas
-       (map count)
+       (map #(count (:points %)))
        (apply max)))
 
 ; Part 2
