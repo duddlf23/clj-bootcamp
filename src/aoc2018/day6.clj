@@ -97,7 +97,8 @@
          (filter closest-target-unique?)
          (group-by :closest-target-ids)
          vals
-         (remove #(infinite-area? (map :point %))))))
+         (map #(map :point %))
+         (remove infinite-area?))))
 
 
 (comment
