@@ -1,149 +1,139 @@
 (ns aoc2018.day7
   "https://adventofcode.com/2018/day/4"
   (:require [util.file :as file]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [clojure.set :as set]))
 
 (defn line->dependency
   "라인 하나를 파싱해 디펜던시 정보를 구함 만약 A를 하기 위해 B가 반드시 끝나야 한다면
   {:required B, :step A} 가 리턴된다."
   [line]
-  (->> line
-       (re-find #"^Step ([A-Z]{1}) must be finished before step ([A-Z]{1}) can begin.$")
-       ((fn [[_ required step]]
-          {:required (.charAt required 0)
-           :step (.charAt step 0)}))))
-
-; 키워드로
+  (let [[_ required step] (re-find #"^Step ([A-Z]{1}) must be finished before step ([A-Z]{1}) can begin.$" line)]
+    {:required (keyword required)
+     :step (keyword step)}))
 
 (def input-dependencies (->> (file/read-file "aoc2018/day7_in.txt")
                              (map line->dependency)))
 
-(def all-steps (set "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
+(def all-steps-set (->> "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                        (map #(keyword (str %)))
+                        set))
 
-(defn remove-done-dependencies
-  "스텝들이 끝났을 때 그 스텝들이 required인 디펜던시들을 모두 제거한다."
-  [dependencies done-steps]
-  (remove (comp (set done-steps) :required) dependencies))
+;state의 데이터 포맷 설명
+; {:idle-steps-set 현재까지 실행되거나 완료되지 않은 스텝들의 집합
+;  :accumulated-done-steps 현재까지 완료된 스텝들의 시퀀스
+;  :workers 워커 정보의 시퀀스로 되어 있으며 하나의 워커 정보는 워커에서 실행 중인 스텝과 완료되는 시간이 저장된다.
+;    ex) ({:step A :done-time 134}, {:step B :done-time 100}, ...)
+;  :worker-limit 워커 수의 제한
+;  :step->required-time 스텝을 입력받아 각 스텝이 완료되는데 필요한 시간을 리턴하는 함수
+;  :dependencies 스텝간의 디펜던시 그래프
+;  :elapsed-time 지금까지 경과된 시간
+;  :end? 모든 스텝이 완료됐는지 여부}
 
-(defn find-executable-step ;next-step
-  "디펜던시가 모두 끝난 스텝을 하나 찾는데 동시에 가능한 스텝이 여러개가 있을 경우 알파벳 순서로 가장 빠른 스텝부터 고름"
-  [dependencies steps]
-  (let [dependent-steps (set (map :step dependencies))]
-    (->> steps
+(defn inc-time [pre-status]
+  (update pre-status :elapsed-time inc))
+
+(defn newify-done-steps
+  "현재 시간에 새롭게 끝난 스텝들을 구하고, 워커와 디펜던시에서 해당 스텝들을 제거한다."
+  [{:keys [workers dependencies elapsed-time] :as pre-state}]
+  (let [done-steps-set (->> workers
+                            (filter #(<= (:done-time %) elapsed-time))
+                            (map :step)
+                            set)
+        active-workers (remove #(done-steps-set (:step %)) workers)
+        active-dependencies (remove #(done-steps-set (:required %)) dependencies)]
+    (-> (update pre-state :accumulated-done-steps into done-steps-set)
+        (assoc :workers active-workers)
+        (assoc :dependencies active-dependencies))))
+
+(defn find-next-idle-steps
+  "워커에 빈 슬롯만큼 새로 실행할 수 있는 스텝들을 찾는다. 이 때 스텝은 idle 상태이고, 디펜던시가 모두 끝난 상태여야 한다.
+  동시에 가능한 스텝이 여러개가 있을 경우 알파벳 순서로 가장 빠른 스텝부터 고른다."
+  [{:keys [idle-steps-set workers worker-limit dependencies] :as pre-state}]
+  (let [idle-workers-num (- worker-limit (count workers))
+        dependent-steps (set (map :step dependencies))]
+    (->> idle-steps-set
          (remove dependent-steps)
          sort
-         first)))
+         (take idle-workers-num))))
 
-; Part 1
-(defn complete-executable-step
-  "현재까지 남은 디펜던시들을 이용해 실행 가능한 스텝을 찾아 만약 존재한다면 그 스텝을 완료했을 때를 기준으로 데이터를 업데이트한다.
-  데이터 포맷 예시: {:remain-steps #{A D F}
-                 :ordered-done-steps [B C]
-                 :dependencies ({:required A, :step D},
-                                {:required A, :step F})}"
-  [{:keys [remain-steps ordered-done-steps dependencies] :as prev-steps-status}]
-  (let [executable-step (find-executable-step dependencies remain-steps)]
-    (if-not executable-step
-      prev-steps-status
-      (hash-map :remain-steps (disj remain-steps executable-step)
-                :ordered-done-steps (conj ordered-done-steps executable-step)
-                :dependencies (remove-done-dependencies dependencies [executable-step])))))
+(defn start-next-steps
+  "새로 실행할 수 있는 스텝들을 찾고, 각자 지금 시작했을 때 끝나는 시간들을 같이 묶는다. 그 후 워커 목록에 추가하고, idle step 목록에서 제거한다.
+  ex) 만약 스텝 A가 60초에 시작한다면 121초에 완료되기 때문에 다음과 같은 데이터 형식으로 워커에 추가되고, 스텝 A는 idle step에서 제거된다.
+      {:step A, :done-time 121}"
+  [{:keys [step->required-time elapsed-time] :as pre-state}]
+  (let [next-steps (find-next-idle-steps pre-state)
+        start-step (fn [step]
+                     {:step step
+                      :done-time (+ elapsed-time (step->required-time step))})]
+    (-> (update pre-state :workers into (map start-step next-steps))
+        (update :idle-steps-set set/difference (set next-steps)))))
 
-(defn get-complete-order [dependencies all-steps]
-  (->> (iterate complete-executable-step {:remain-steps all-steps
-                                          :ordered-done-steps []
-                                          :dependencies dependencies})
-       (drop-while (comp seq :remain-steps)) ; filter
-       first
-       :ordered-done-steps))
+(defn check-end
+  "모든 스텝들이 완료됐는지 검사해 상태를 업데이트한다."
+  [{:keys [idle-steps-set workers] :as pre-state}]
+  (assoc pre-state :end? (and (empty? idle-steps-set)
+                              (empty? workers))))
 
-(comment
-  (line->dependency "Step U must be finished before step A can begin.")
-
-  (->> (get-complete-order input-dependencies all-steps)
-       (apply str)))
-
-
-; Part 2
-(def step-ids "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-(defn required-time [step]
-  (+ 61 (string/index-of step-ids step)))
-
-(defn add-steps-to-workers
-  "워커에 스텝들을 추가한다. 만약 새로 추가될 스텝 A가 60초에 추가된다면 121초에 완료되기 때문에 다음과 같은 데이터 형식으로 추가된다.
-  {:step A, :completed-time 121}"
-  [workers steps current-time]
-  (->> steps
-       (map #(hash-map :step %
-                       :completed-time (+ current-time (required-time %))))
-       (into workers)))
-; 스텝 -> 워커 나누기
-
-(defn find-completed-steps
-  "현재 시각이 스텝이 완료되는 시간보다 크다면 그 스텝은 완료됐다는 것이다.
-  워커에 등록된 스텝들 중 완료된 스텝들을 찾아 리턴한다."
-  [workers current-time]
-  (->> workers
-       (filter #(<= (:completed-time %) current-time))
-       (map :step)))
-
-(defn remove-steps-from-workers
-  "스텝들을 입력받아 워커 목록에서 해당 스텝들을 지운다."
-  [workers steps]
-  (remove (comp (set steps) :step) workers))
-
-(defn find-executable-n-steps
-  "디펜던시가 모두 끝난 스텝을 n개 찾는데 현재 실행 중인 스텝은 배제한다. 동시에 가능한 스텝이 여러개가 있을 경우 알파벳 순서로 가장 빠른 스텝부터 고름"
-  [dependencies steps in-progress-steps n]
-  (let [dependent-steps (set (map :step dependencies))]
-    (->> steps
-         (remove dependent-steps)
-         (remove (set in-progress-steps))
-         sort
-         (take n))))
-
-(defn update-steps-status
+(defn update-steps-state
   "1초 전의 워커와 스텝들의 상태를 입력받아 현재 시간에서 완료되는 스텝들과 새로 워커에 추가될 스텝들을 구해 상태를 업데이트한다.
-  데이터 포맷 예시: Input: {:remain-steps #{A D F}
-                        :workers ({:step A :completed-time 61})
+  아래 예시는 워커에서 돌고 있던 스텝 A가 완료되고 새로 D, F를 워커에 등록하는 프로세스이다.
+  데이터 포맷 예시: Input: {:idle-steps #{D F}
+                        :accumulated-done-steps []
+                        :workers ({:step A :done-time 61})
                         :dependencies ({:required A, :step D},
                                        {:required A, :step F})
-                        :elapsed-time 61}
-                Output: {:remain-steps #{D F}
-                         :workers ({:step D :completed-time 125},
-                                   {:step F :completed-time 127})
+                        :elapsed-time 60
+                        ...}
+                Output: {:idle-steps #{}
+                         :accumulated-done-steps [A]
+                         :workers ({:step D :done-time 125},
+                                   {:step F :done-time 127})
                          :dependencies ()
-                         :elapsed-time 62}"
-  [{:keys [remain-steps workers dependencies elapsed-time]}]
-  (let [in-progress-steps (map :step workers)
-        completed-steps (find-completed-steps workers elapsed-time)
-        idle-worker-count (- 5 (- (count workers) (count completed-steps)))
-        updated-remain-steps (apply disj remain-steps completed-steps)
-        updated-dependencies (remove-done-dependencies dependencies completed-steps)
-        executable-steps (find-executable-n-steps updated-dependencies updated-remain-steps
-                                                  in-progress-steps idle-worker-count)]
-    (hash-map :remain-steps updated-remain-steps
-              :workers (-> workers
-                           (remove-steps-from-workers completed-steps)
-                           (add-steps-to-workers executable-steps elapsed-time))
-              :dependencies updated-dependencies
-              :elapsed-time (inc elapsed-time))))
+                         :elapsed-time 61
+                         ...}"
+  [pre-state]
+  (-> pre-state
+      inc-time
+      newify-done-steps
+      start-next-steps
+      check-end))
 
-(defn get-all-steps-completed-time [dependencies all-steps]
-  (->> (iterate update-steps-status {:remain-steps all-steps
-                                     :workers      []
-                                     :dependencies dependencies
-                                     :elapsed-time 0})
-       (take-while (comp seq :remain-steps))
-       last
-       :elapsed-time))
+(defn execute-all-steps [{:keys [dependencies all-steps-set worker-limit step->required-time]}]
+  (let [init-state {:idle-steps-set         all-steps-set
+                    :accumulated-done-steps []
+                    :workers                []
+                    :worker-limit           worker-limit
+                    :step->required-time    step->required-time
+                    :dependencies           dependencies
+                    :elapsed-time           -1
+                    :end?                   false}]
+    (-> (filter :end? (iterate update-steps-state init-state))
+        first
+        (select-keys [:accumulated-done-steps :elapsed-time]))))
+
+(defn step->required-time-part1 [step] 1)
+
+(def step-ids "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+(defn step->required-time-part2 [step]
+  (+ 61 (string/index-of step-ids (name step))))
 
 (comment
-  (required-time "X")
-  (find-completed-steps [{:step "A", :completed-time 61}
-                         {:step "B", :completed-time 62}], 61)
+  ; Part 1
+  (let [config {:dependencies input-dependencies
+                :all-steps-set all-steps-set
+                :worker-limit 1
+                :step->required-time step->required-time-part1}]
+    (->> (execute-all-steps config)
+         :accumulated-done-steps
+         (map name)
+         (apply str)))
 
-  (get-all-steps-completed-time [{:required "A" :step "B"}] #{"A" "B"})
-
-  (get-all-steps-completed-time input-dependencies all-steps))
+  ; Part 2
+  (let [config {:dependencies input-dependencies
+                :all-steps-set all-steps-set
+                :worker-limit 5
+                :step->required-time step->required-time-part2}]
+    (->> (execute-all-steps config)
+         :elapsed-time)))
