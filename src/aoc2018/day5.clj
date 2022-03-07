@@ -48,6 +48,6 @@
   (remove-unit "AdeAEdbFyh" \a)
 
   (->> (get-distinct-units input)
-       (map (partial remove-unit input))
-       (map (comp count alchemical-reduce))
+       (map #(remove-unit input %))
+       (map #(count (alchemical-reduce %)))
        (apply min)))
