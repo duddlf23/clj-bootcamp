@@ -19,16 +19,16 @@
                         (map #(keyword (str %)))
                         set))
 
-;state의 데이터 포맷 설명
-; {:idle-steps-set 현재까지 실행되거나 완료되지 않은 스텝들의 집합
-;  :accumulated-done-steps 현재까지 완료된 스텝들의 시퀀스
-;  :workers 워커 정보의 시퀀스로 되어 있으며 하나의 워커 정보는 워커에서 실행 중인 스텝과 완료되는 시간이 저장된다.
-;    ex) ({:step A :done-time 134}, {:step B :done-time 100}, ...)
-;  :worker-limit 워커 수의 제한
-;  :step->required-time 스텝을 입력받아 각 스텝이 완료되는데 필요한 시간을 리턴하는 함수
-;  :dependencies 스텝간의 디펜던시 그래프
-;  :elapsed-time 지금까지 경과된 시간
-;  :end? 모든 스텝이 완료됐는지 여부}
+;; state의 데이터 포맷 설명
+;; {:idle-steps-set 현재까지 실행되거나 완료되지 않은 스텝들의 집합
+;;  :accumulated-done-steps 현재까지 완료된 스텝들의 시퀀스
+;;  :workers 워커 정보의 시퀀스로 되어 있으며 하나의 워커 정보는 워커에서 실행 중인 스텝과 완료되는 시간이 저장된다.
+;;    ex) ({:step A :done-time 134}, {:step B :done-time 100}, ...)
+;;  :worker-limit 워커 수의 제한
+;;  :step->required-time 스텝을 입력받아 각 스텝이 완료되는데 필요한 시간을 리턴하는 함수
+;;  :dependencies 스텝간의 디펜던시 그래프
+;;  :elapsed-time 지금까지 경과된 시간
+;;  :end? 모든 스텝이 완료됐는지 여부}
 
 (defn newify-done-steps
   "현재 시간에 새롭게 끝난 스텝들을 구하고, 워커와 디펜던시에서 해당 스텝들을 제거한다."
@@ -103,18 +103,22 @@
                     :step->required-time    step->required-time
                     :dependencies           dependencies
                     :elapsed-time           -1
-                    :end?                   false}]
-    (-> (filter :end? (iterate update-steps-state init-state))
-        first
+                    :end?                   false}
+        result (->> init-state
+                    (iterate update-steps-state)
+                    (filter :end?)
+                    first)]
+    (-> result
         (select-keys [:accumulated-done-steps :elapsed-time]))))
 
 (def step-ids "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 (defn step->required-time-part2 [step]
-  (+ 61 (string/index-of step-ids (name step))))
+  (let [duration-offset 61]
+    (+ duration-offset (string/index-of step-ids (name step)))))
 
 (comment
-  ; Part 1
+  ;; Part 1
   (let [config {:dependencies input-dependencies
                 :all-steps-set all-steps-set
                 :worker-limit 1
@@ -124,7 +128,7 @@
          (map name)
          (apply str)))
 
-  ; Part 2
+  ;; Part 2
   (let [config {:dependencies input-dependencies
                 :all-steps-set all-steps-set
                 :worker-limit 5

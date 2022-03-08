@@ -14,8 +14,11 @@
 (def change-polarity (merge upper->lower lower->upper))
 
 ; Part 1
-; react
-(defn react [reacted new-polymer]
+
+(defn react
+  "새로운 폴리머가 이미 반응이 완료한 결과물의 마지막 폴리머와 상극이고 타입이 같은 폴리머일 경우
+  그 둘이 반응해 직전 결과물의 마지막 폴리머를 삭제하고 아니라면 새로운 폴리머를 결과물 뒤에 추가한다."
+  [reacted new-polymer]
   (if (= (change-polarity new-polymer) (peek reacted))
     (pop reacted)
     (conj reacted new-polymer)))

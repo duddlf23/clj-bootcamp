@@ -14,12 +14,12 @@
   (->> (file/read-file "aoc2020/day8_in.txt")
        (mapv line->operation)))
 
-;state의 데이터 포맷 예시
-; {:instructions 주어진 instruction 목록
-;  :accumulator 현재 accumulator 값
-;  :cursor 현재 명령의 인덱스
-;  :cursor-history 이제까지 실행한 명령 인덱스들의 집합
-;  :program-status [:running|:duplicate-run|:termination]}
+;; state의 데이터 포맷 예시
+;; {:instructions 주어진 instruction 목록
+;;  :accumulator 현재 accumulator 값
+;;  :cursor 현재 명령의 인덱스
+;;  :cursor-history 이제까지 실행한 명령 인덱스들의 집합
+;;  :program-status [:running|:duplicate-run|:termination]}
 
 (defn nop
   "nop 연산을 수행해 스테이트를 업데이트한다."
