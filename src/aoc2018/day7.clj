@@ -30,9 +30,6 @@
 ;  :elapsed-time 지금까지 경과된 시간
 ;  :end? 모든 스텝이 완료됐는지 여부}
 
-(defn inc-time [pre-status]
-  (update pre-status :elapsed-time inc))
-
 (defn newify-done-steps
   "현재 시간에 새롭게 끝난 스텝들을 구하고, 워커와 디펜던시에서 해당 스텝들을 제거한다."
   [{:keys [workers dependencies elapsed-time] :as pre-state}]
@@ -49,7 +46,7 @@
 (defn find-next-idle-steps
   "워커에 빈 슬롯만큼 새로 실행할 수 있는 스텝들을 찾는다. 이 때 스텝은 idle 상태이고, 디펜던시가 모두 끝난 상태여야 한다.
   동시에 가능한 스텝이 여러개가 있을 경우 알파벳 순서로 가장 빠른 스텝부터 고른다."
-  [{:keys [idle-steps-set workers worker-limit dependencies] :as pre-state}]
+  [{:keys [idle-steps-set workers worker-limit dependencies]}]
   (let [idle-workers-num (- worker-limit (count workers))
         dependent-steps (set (map :step dependencies))]
     (->> idle-steps-set
@@ -93,8 +90,7 @@
                          :elapsed-time 61
                          ...}"
   [pre-state]
-  (-> pre-state
-      inc-time
+  (-> (update pre-state :elapsed-time inc)
       newify-done-steps
       start-next-steps
       check-end))
@@ -112,8 +108,6 @@
         first
         (select-keys [:accumulated-done-steps :elapsed-time]))))
 
-(defn step->required-time-part1 [step] 1)
-
 (def step-ids "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 (defn step->required-time-part2 [step]
@@ -124,7 +118,7 @@
   (let [config {:dependencies input-dependencies
                 :all-steps-set all-steps-set
                 :worker-limit 1
-                :step->required-time step->required-time-part1}]
+                :step->required-time (constantly 1)}]
     (->> (execute-all-steps config)
          :accumulated-done-steps
          (map name)
